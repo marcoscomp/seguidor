@@ -4,25 +4,28 @@ import rospy
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
 from nav_msgs.msg import Odometry
+from sensor_msgs import LaserScam
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 import time
-
+import math
 
 class seguidor:
     def __init__(self):
-        rospy.init_node("seg1", anonymous=False)
+        rospy.init_node("seguidorlidar", anonymous=False)
         self.pub1=rospy.Publisher('/seguidor1/cmd_vel', Twist, queue_size=10) #publica no controle de velocidade a ser controlado
 
-        rospy.Subscriber('/seguidor1/odom', Odometry, self.update_ref) #visualiza a propria posição
+        rospy.Subscriber('/seguidor1/odom', Odometry, self.update_ref) #visualiza a posição do veiculo a ser controlado
 
         #rospy.Subscriber('/odom1hz', Odometry, self.update_refMestre)#visualiza a posição do mestre
-        
+        rospy.Subscriber('/seguidor1/scam', LaserScam,self.update_lidar)#Atualiza o lidar do robo seguidor
 
         self.ref= Pose()
         self.refM= Pose()
         self.rate=rospy.Rate(10)
         
+        self.scan=LaserScam()
+
         self.max_vel=0.20
         self.max_ang=2.84
 
@@ -65,7 +68,7 @@ class seguidor:
         return control
 
     def run(self):
-        ref_tol = 0.2
+        ref_tol = 0.5
         vel_msg = Twist()
         while self.ref_distance() >= ref_tol:
             vel_msg.linear.x = self.linear_vel_control()
@@ -87,6 +90,21 @@ class seguidor:
         #rospy.loginfo("Ponto")
         #rospy.loginfo(self.ref.x)
 
+    def update_lidar(self, msg):
+        self.scan=msg
+        dist=0
+        angle=0
+        for i in range(self.scan.ranges):
+            if(self.scan.ranges[i]>0 and self.scan.ranges[i]<10):
+                if(self.scan.ranges[i]<dist):
+                    dist=self.scan.ranges[i]
+                    angle=i
+        self.refM.x= self.ref.x+dist*math.cos(self.ref.theta+math.radians(i))
+        self.refM.y= self.ref.y+dist*math.sin(self.ref.theta+math.radians(i))
+        #self.refM.yaw=
+
+
+
 
 if __name__ == '__main__':
     try :
@@ -94,6 +112,6 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             seg.run()
             seg.rate.sleep()
-            rospy.get_pa
+            #rospy.get_pa
     except rospy.ROSInterruptException:
         pass
