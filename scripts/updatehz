@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+import rospy
+from geometry_msgs.msg import Twist
+from turtlesim.msg import Pose
+from nav_msgs.msg import Odometry
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+import numpy as np
+import time
+
+
+class odomhz:
+    def __init__(self):
+        rospy.init_node("odom1hz", anonymous=False)
+        self.pub1=rospy.Publisher('odom1hz', Odometry, queue_size=10) #publica no controle de velocidade a ser controlado
+
+        self.odom= Odometry()
+        rospy.Subscriber('/mestre/odom', Odometry, self.f)#visualiza a posição do mestre
+        self.rate=rospy.Rate(1)
+
+    def f(self, msg):
+        self.odom.pose.pose.orientation=msg.pose.pose.orientation
+        self.odom.pose.pose.position=msg.pose.pose.position
+
+
+    def run(self):
+        while not rospy.is_shutdown():
+            self.pub1.publish(self.odom)
+            self.rate.sleep()
+
+        
+
+
+if __name__ == '__main__':
+    od=odomhz()
+    try :
+        od.run()
+    except rospy.ROSInterruptException:
+        pass

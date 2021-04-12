@@ -1,0 +1,98 @@
+#!/usr/bin/env python
+
+import rospy
+from geometry_msgs.msg import Twist
+from turtlesim.msg import Pose
+from nav_msgs.msg import Odometry
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+import numpy as np
+import time
+
+
+class seguidor:
+    def __init__(self):
+        rospy.init_node("seg1", anonymous=False)
+        self.pub1=rospy.Publisher('/seguidor1/cmd_vel', Twist, queue_size=10) #publica no controle de velocidade a ser controlado
+
+        rospy.Subscriber('/seguidor1/odom', Odometry, self.update_ref) #visualiza a propria posição
+
+        rospy.Subscriber('/odom1hz', Odometry, self.update_refMestre)#visualiza a posição do mestre
+
+        self.ref= Pose()
+        self.refM= Pose()
+        self.rate=rospy.Rate(10)
+        
+        self.max_vel=0.20
+        self.max_ang=2.84
+
+        self.i=0
+
+    def update_ref(self, msg):
+        orientacao_quart=msg.pose.pose.orientation
+        orientacao_list=[orientacao_quart.x, orientacao_quart.y, orientacao_quart.z, orientacao_quart.w]
+        (_,_,yaw)=euler_from_quaternion(orientacao_list)
+
+        self.ref.x=msg.pose.pose.position.x
+        self.ref.y=msg.pose.pose.position.y
+        self.ref.theta=yaw
+
+    def update_refMestre(self, msg):
+        orientacao_quart=msg.pose.pose.orientation
+        orientacao_list=[orientacao_quart.x, orientacao_quart.y, orientacao_quart.z, orientacao_quart.w]
+        (_,_,yaw)=euler_from_quaternion(orientacao_list)
+
+        self.refM.x=msg.pose.pose.position.x
+        self.refM.y=msg.pose.pose.position.y
+        self.refM.theta=yaw
+    
+    def ref_distance(self):
+        return np.sqrt(  (self.refM.x - self.ref.x)**2 + (self.refM.y - self.ref.y)**2)
+    
+
+    def linear_vel_control(self, kp = 1.5):
+        distance = self.ref_distance()
+        control = kp* distance
+        if abs(control) > self.max_vel:
+            control = self.max_vel*np.sign(control)
+        return control
+
+    def angular_vel_control(self,  kp=6):
+        angle_r = np.arctan2(self.refM.y - self.ref.y,  self.refM.x - self.ref.x )        
+        control = kp*(angle_r - self.ref.theta)
+        if abs(control) > self.max_ang:
+            control = self.max_ang*np.sign(control)
+        return control
+
+    def run(self):
+        ref_tol = 0.2
+        vel_msg = Twist()
+        while self.ref_distance() >= ref_tol:
+            vel_msg.linear.x = self.linear_vel_control()
+            vel_msg.linear.y = 0
+            vel_msg.linear.z = 0
+            vel_msg.angular.x = 0
+            vel_msg.angular.y = 0
+            vel_msg.angular.z = self.angular_vel_control()
+
+            self.pub1.publish(vel_msg)
+
+            self.rate.sleep()
+
+        # stop
+        vel_msg.linear.x = 0
+        vel_msg.angular.z= 0
+        self.pub1.publish(vel_msg)
+
+        #rospy.loginfo("Ponto")
+        #rospy.loginfo(self.ref.x)
+
+
+if __name__ == '__main__':
+    try :
+        seg=seguidor()
+        while not rospy.is_shutdown():
+            seg.run()
+            seg.rate.sleep()
+            rospy.get_pa
+    except rospy.ROSInterruptException:
+        pass
