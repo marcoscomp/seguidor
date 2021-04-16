@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -28,6 +28,14 @@ class seguidor:
 
         self.max_vel=0.20
         self.max_ang=2.84
+        self.frame1=[]
+        self.frame2=[]
+        self.framedif=[]
+
+        for i in range(0,360):
+            self.frame1.append(0)
+            self.framedif.append(0)
+            self.frame2.append(0)
 
         self.i=0
 
@@ -67,6 +75,7 @@ class seguidor:
             control = self.max_ang*np.sign(control)
         return control
 
+
     def run(self):
         ref_tol = 0.5
         vel_msg = Twist()
@@ -94,20 +103,46 @@ class seguidor:
         self.scan=msg
         dist=0
         angle=0
-        rg=1
-        while (rg<360):
-            if(self.scan.ranges[rg]>0 and self.scan.ranges[rg]<3.4):
-               # if(self.scan.ranges[rg]<dist):
-                dist=self.scan.ranges[rg]
-                angle=rg
-#break
-            rg=rg+1
-                
-        self.refM.x= self.ref.x+dist*math.cos(self.ref.theta+math.radians(angle))
-        self.refM.y= self.ref.y+dist*math.sin(self.ref.theta+math.radians(angle))
-               
-        #self.refM.yaw=
+        rg=0
+        if (self.i==3):
+            self.i=self.i+1
+            for i in range(0,360):
+                    if(math.isinf(self.scan.ranges[i])):
+                        self.frame2[i]= abs(3.5)
+                    else:
+                        self.frame2[i]= abs(self.scan.ranges[i])
+ 
+            while (rg<360):
+                self.framedif[rg]=abs(self.frame2[rg]-self.frame1[rg])
+                if(self.framedif[rg]>0.2 and (self.framedif[rg]<dist or dist==0)and self.framedif[rg]<3):
+                    # if(self.scan.ranges[rg]<dist):
+                    dist=self.framedif[rg]
+                    angle=rg
 
+                rg=rg+1
+            if (dist!= 0):        
+                self.refM.x= self.ref.x+self.frame2[angle]*math.cos(self.ref.theta+math.radians(angle))
+                self.refM.y= self.ref.y+self.frame2[angle]*math.sin(self.ref.theta+math.radians(angle))
+            
+        
+            print(self.framedif)  
+            print(dist)
+            print(angle)             
+            #self.refM.yaw=
+        else:
+            self.i=self.i+1
+            if(self.i==20):
+                self.i=0
+                self.refM.x=self.ref.x
+                self.refM.y=self.ref.y
+            if(self.i==1):
+                for i in range(0,360):
+                    if(math.isinf(self.scan.ranges[i])):
+                        self.frame1[i]= abs(3.5)
+                    else:
+                        self.frame1[i]= abs(self.scan.ranges[i])
+                
+                
 
 
 
