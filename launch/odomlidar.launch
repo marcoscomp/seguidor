@@ -1,0 +1,42 @@
+<launch>
+    <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="model type [burger, waffle, waffle_pi]"/>
+    <arg name="robo0" default="mestre"/>
+    <arg name="robo1" default="seguidor1"/>
+    <arg name="robo2" default="seguidor2"/>
+
+    <arg name="r0_x" default="-0.0"/>
+    <arg name="r0_y" default="-0.0"/>
+    <arg name="r0_z" default="-0.0"/>
+    <arg name="r0_w" default="-0.0"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="paused" value="false"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="gui" value="true"/>
+        <arg name="headless" value="false"/>
+        <arg name="debug" value="false"/>
+      </include> 
+
+    <group ns="$(arg robo0)">
+        <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+  
+        <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+          <param name="publish_frequency" type="double" value="50.0" />
+          <param name="tf_prefix" value="$(arg robo0)" />
+        </node>
+        
+        <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-urdf -model $(arg robo0) -x $(arg r0_x) -y $(arg r0_y) -z $(arg r0_z) -Y $(arg r0_w) -param robot_description" />
+    
+    </group>
+
+
+    <!-- controle do cmd_vel pelo teclado do mestre-->
+    <group ns="$(arg robo0)">
+        <node name="tecladoMestre" pkg="turtlebot3_teleop" type="turtlebot3_teleop_key" output="screen">
+        </node>
+    </group>
+
+
+<!--     <node name="seguidorlidar" pkg="seguidor" type="seguidorlidar" output="screen"></node>
+-->
+</launch>
