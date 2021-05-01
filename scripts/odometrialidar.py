@@ -72,7 +72,9 @@ class odometrialidar:
         #apagando os pontos exedentes com alguma metodologia que não está implementada
         # para escolher os pontos que serão apgados
         pk,pk1=self.dimensiona(pk,pk1)
-        #pk1 p[k+1] pontos atuais
+        #pk1 <--> p[k+1] pontos atuais
+
+        #icp simples 
         R, T = icp_example.icp_matching(pk, pk1)
         return R, T
 
@@ -83,30 +85,11 @@ class odometrialidar:
             pk1=np.vstack((pk1[0,0:len(pk[0,:])], pk1[1,0:len(pk[0,:])]))
         return pk, pk1
 
-    def tf(theta, S, Q, angle = 'rad'):
-        if angle == 'deg':
-            theta = np.deg2rad(theta)
-        th_matrix = np.array([[np.cos(theta),   -np.sin(theta), 0.,      Q[0]],
-                            [np.sin(theta),   np.cos(theta),  0.,      Q[1]],
-                            [0.,        0.,                   1.,      Q[2]],
-                            [0.,        0.,                   0.,      S]])
-        return th_matrix
-    
-    
-    def rot(theta, angle = 'rad'):
-        if angle == 'deg':
-            theta = np.deg2rad(theta)
-        rotate_matrix = np.array([[ np.cos(theta),   -np.sin(theta),     0.],
-                                [   np.sin(theta),    np.cos(theta),     0.],
-                                [   0.,               0.,                1.]])
-        return rotate_matrix
-
 
 if __name__ == '__main__':
     try:
         odom=odometrialidar()
         while not rospy.is_shutdown():
-            #  seg.run()
             odom.rate.sleep()
             
 
